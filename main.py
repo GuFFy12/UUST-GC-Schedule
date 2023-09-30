@@ -1,4 +1,5 @@
 import requests
+import configparser
 from datetime import datetime, timedelta
 from bs4 import BeautifulSoup
 from gcsa.event import Event
@@ -61,7 +62,7 @@ def get_schedule_table(schedule_semester_id: int, schedule_type: int, student_gr
     return soup.find('tbody')
 
 
-def parse_schedule(schedule_table, schedule_type: int):
+def parse_schedule(schedule_table, schedule_type: int, minutes_before_popup_reminder_first_lesson=60, minutes_before_popup_reminder=20):
     lesson_rows = schedule_table.findAll('tr')
 
     calendar_events = []
@@ -83,19 +84,19 @@ def parse_schedule(schedule_table, schedule_type: int):
         lesson_type = lesson_columns[4].text
         lesson_teacher_or_student_group = lesson_columns[5].text
         lesson_classroom = lesson_columns[6].text
-        lesson_campus = lesson_classroom.split("-")[0]
+        lesson_campus = lesson_classroom.split("-")
         lesson_comment = lesson_columns[7].text
 
         for week in lesson_weeks:
             calendar_events.append(
                 Event(
-                    f'{get_lesson_num(lesson_start_end_time[0])}. {lesson_type} — {lesson_name}, {lesson_classroom}',
-                    description=("<b>Преподаватель" if schedule_type == 1 else "<b>Группа") + f':</b> {lesson_teacher_or_student_group}\n' +
-                                (f'<b>Комментарий:</b> {lesson_comment}\n' if lesson_comment != '' else '') +
-                    f'<b>Дата добавления:</b> {datetime.now().strftime("%d.%m.%Y %H:%M")}',
-                    minutes_before_popup_reminder=(20 if week + day_of_week in first_lesson else 60),
+                    f'{get_lesson_num(lesson_start_end_time[0])}. {lesson_name} — {lesson_type}, {lesson_classroom}',
+                    description=("Преподаватель" if schedule_type == 1 else "Группа") + f': {lesson_teacher_or_student_group}\n' +
+                                (f'Комментарий: {lesson_comment}\n' if lesson_comment != '' else '') +
+                    f'Дата добавления: {datetime.now().strftime("%d.%m.%Y %H:%M")}',
+                    minutes_before_popup_reminder=(minutes_before_popup_reminder if week + day_of_week in first_lesson else minutes_before_popup_reminder_first_lesson),
                     color_id=get_event_color(lesson_type),
-                    location=(f'УГАТУ корпус {lesson_campus}' if lesson_campus.isnumeric() else ""),
+                    location=(f'УГАТУ, Корпус {lesson_campus[0]}, Кабинет: {lesson_campus[1]}' if lesson_campus[0].isnumeric() else ""),
                     timezone="Asia/Yekaterinburg",
                     start=get_date_from_schedule_api(int(week), day_of_week, lesson_start_end_time[0]),
                     end=get_date_from_schedule_api(int(week), day_of_week, lesson_start_end_time[1])
@@ -106,11 +107,25 @@ def parse_schedule(schedule_table, schedule_type: int):
     return calendar_events
 
 
-gc = GoogleCalendar('ПОЧТА', credentials_path="client_secret.json")
-gc.clear_calendar()
+if __name__ == "__main__":
+    config = configparser.ConfigParser()
+    config.read("settings.ini")
 
-schedule_table = get_schedule_table(231, 1, student_group_id=2575)
-schedule_events = parse_schedule(schedule_table, 1)
+    gc = GoogleCalendar(config["Settings"]["default_calendar"], credentials_path="client_secret.json")
+    gc.clear_calendar()
 
-for schedule_event in schedule_events:
-    gc.add_event(schedule_event)
+    schedule_table = get_schedule_table(
+        int(config["Settings"]["schedule_semester_id"]),
+        int(config["Settings"]["schedule_type"]),
+        student_group_id=int(config["Settings"]["student_group_id"]),
+        teacher_id=int(config["Settings"]["teacher_id"]),
+    )
+    schedule_events = parse_schedule(
+        schedule_table,
+        int(config["Settings"]["schedule_type"]),
+        minutes_before_popup_reminder_first_lesson=int(config["Settings"]["minutes_before_popup_reminder_first_lesson"]),
+        minutes_before_popup_reminder=int(config["Settings"]["minutes_before_popup_reminder"])
+    )
+
+    for schedule_event in schedule_events:
+        gc.add_event(schedule_event)
