@@ -93,7 +93,7 @@ def parse_schedule(schedule_table, schedule_type: int):
                     description=("<b>Преподаватель" if schedule_type == 1 else "<b>Группа") + f':</b> {lesson_teacher_or_student_group}\n' +
                                 (f'<b>Комментарий:</b> {lesson_comment}\n' if lesson_comment != '' else '') +
                     f'<b>Дата добавления:</b> {datetime.now().strftime("%d.%m.%Y %H:%M")}',
-                    minutes_before_popup_reminder=(60 if week + day_of_week in first_lesson else 20),
+                    minutes_before_popup_reminder=(20 if week + day_of_week in first_lesson else 60),
                     color_id=get_event_color(lesson_type),
                     location=(f'УГАТУ корпус {lesson_campus}' if lesson_campus.isnumeric() else ""),
                     timezone="Asia/Yekaterinburg",
@@ -106,7 +106,7 @@ def parse_schedule(schedule_table, schedule_type: int):
     return calendar_events
 
 
-gc = GoogleCalendar('ПОЧТА', credentials_path="./client_secret.json")
+gc = GoogleCalendar('ПОЧТА', credentials_path="client_secret.json")
 gc.clear_calendar()
 
 schedule_table = get_schedule_table(231, 1, student_group_id=2575)
@@ -114,4 +114,3 @@ schedule_events = parse_schedule(schedule_table, 1)
 
 for schedule_event in schedule_events:
     gc.add_event(schedule_event)
-
