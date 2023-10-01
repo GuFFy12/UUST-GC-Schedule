@@ -1,3 +1,4 @@
 requests~=2.31.0
 beautifulsoup4~=4.12.2
 gcsa~=2.1.0
+pytz~=2023.3.post1
