@@ -93,16 +93,16 @@ def get_schedule_events(schedule_semester_id: int, schedule_type: int, student_g
 
     day_of_week = ""
     first_lesson = set()
-    for row in lesson_rows:
-        lesson_columns = row.findAll('td')
+    for lesson_row in lesson_rows:
+        lesson_columns = lesson_row.findAll('td')
 
-        if 'dayheader' in row['class']:
+        if 'dayheader' in lesson_row['class']:
             day_of_week = lesson_columns[0].text
 
-        if 'noinfo' in row['class']:
+        if 'noinfo' in lesson_row['class']:
             continue
 
-        lesson_start_end_time = lesson_columns[1].text.split("-")
+        lesson_start_time, lesson_end_time = lesson_columns[1].text.split("-")
         lesson_weeks = lesson_columns[2].text.split()
         lesson_name = lesson_columns[3].text
         lesson_type = lesson_columns[4].text
@@ -111,14 +111,14 @@ def get_schedule_events(schedule_semester_id: int, schedule_type: int, student_g
         lesson_comment = lesson_columns[7].text
 
         for week in lesson_weeks:
-            lesson_end_date = get_date_from_schedule(first_day_of_first_september_week, int(week), day_of_week, lesson_start_end_time[1])
+            lesson_end_date = get_date_from_schedule(first_day_of_first_september_week, int(week), day_of_week, lesson_end_time)
             if current_date > lesson_end_date:  # Не добавляем уже прошедшие занятия.
                 continue
 
-            lesson_start_date = get_date_from_schedule(first_day_of_first_september_week, int(week), day_of_week, lesson_start_end_time[0])
+            lesson_start_date = get_date_from_schedule(first_day_of_first_september_week, int(week), day_of_week, lesson_start_time)
 
             schedule_events[lesson_start_date] = Event(
-                    f'{get_lesson_num(lesson_start_end_time[0])}. {lesson_name} — {lesson_type}',
+                    f'{get_lesson_num(lesson_start_time)}. {lesson_name} — {lesson_type}',
                     description=("Преподаватель" if schedule_type == 1 else "Группа") + f': {lesson_teacher_or_student_group}\n' +
                                 (f'Комментарий: {lesson_comment}\n' if lesson_comment != '' else ''),
                     minutes_before_popup_reminder=(minutes_before_popup_reminder if week + day_of_week in first_lesson else minutes_before_popup_reminder_first_lesson),
@@ -157,10 +157,10 @@ if __name__ == "__main__":
 
         schedule_event = schedule_events[gc_event.start]
 
-        isUpdated = (gc_event.summary != schedule_event.summary or gc_event.description != schedule_event.description or gc_event.location != schedule_event.location or
-                     gc_event.reminders != schedule_event.reminders)
+        is_event_updated = (gc_event.summary != schedule_event.summary or gc_event.description != schedule_event.description or gc_event.location != schedule_event.location or
+                            gc_event.reminders != schedule_event.reminders)
 
-        if isUpdated:  # Если есть различия в расписании и календаре, обновляем событие.
+        if is_event_updated:  # Если есть различия в расписании и календаре, обновляем событие.
             schedule_event.event_id = gc_event.event_id
             gc.update_event(schedule_event, send_updates="all")
             print("Обновлён —", gc_event, schedule_event)
@@ -168,5 +168,5 @@ if __name__ == "__main__":
         schedule_events.pop(gc_event.start)  # Обязательно удаляем из списка расписания занятия, которые уже были в календаре.
 
     for schedule_event in schedule_events.values():
-        gc.add_event(schedule_event)
+        gc.add_event(schedule_event, send_updates="all")
         print("Добавлен —", schedule_event)
