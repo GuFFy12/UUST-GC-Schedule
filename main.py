@@ -6,6 +6,7 @@ from bs4 import BeautifulSoup
 from gcsa.event import Event
 from gcsa.google_calendar import GoogleCalendar
 
+
 # Utilities
 
 def get_first_day_of_first_september_week(current_date: datetime):
@@ -131,15 +132,15 @@ def get_schedule_events(schedule_semester_id: int, schedule_type: int, student_g
             lesson_start_date = get_date_from_schedule(first_day_of_first_september_week, int(week), day_of_week, lesson_start_time)
 
             schedule_events[lesson_start_date] = Event(
-                    f"{get_lesson_num(lesson_start_time)}. {lesson_name} — {lesson_type}",
-                    description=("Преподаватель" if schedule_type == 1 else "Группа") + f": {lesson_teacher_or_student_group}" +
-                                (f"\nКомментарий: {lesson_comment}" if lesson_comment != "" else ""),
-                    minutes_before_popup_reminder=(minutes_before_popup_reminder if week + day_of_week in first_lesson else minutes_before_popup_reminder_first_lesson),
-                    color_id=get_event_color(lesson_type),
-                    location=lesson_classroom,
-                    timezone="Asia/Yekaterinburg",
-                    start=lesson_start_date,
-                    end=lesson_end_date
+                f"{get_lesson_num(lesson_start_time)}. {lesson_name} — {lesson_type}",
+                description=("Преподаватель" if schedule_type == 1 else "Группа") + f": {lesson_teacher_or_student_group}" +
+                            (f"\nКомментарий: {lesson_comment}" if lesson_comment != "" else ""),
+                minutes_before_popup_reminder=(minutes_before_popup_reminder if week + day_of_week in first_lesson else minutes_before_popup_reminder_first_lesson),
+                color_id=get_event_color(lesson_type),
+                location=lesson_classroom,
+                timezone="Asia/Yekaterinburg",
+                start=lesson_start_date,
+                end=lesson_end_date
             )
 
             first_lesson.add(week + day_of_week)
