@@ -28,24 +28,7 @@ def get_date_from_schedule(first_day_of_first_september_week: datetime, week: in
 
 
 def get_lesson_num(lesson_start_time: str):
-    lesson_times = {
-        "08:00": "1",
-        "09:35": "2",
-        "11:35": "3",
-        "13:10": "4",
-        "15:10": "5",
-        "16:45": "6",
-        "18:20": "7",
-        "19:55": "8",
-        "21:25": "9",
-        "22:55": "10"
-    }
-
-    lesson_num = lesson_times.get(lesson_start_time)
-    if lesson_num is None:
-        print(f"Ошибка — Время '{lesson_num}' не найдено в словаре")
-
-    return lesson_times.get(lesson_start_time)
+    return ["08:00", "09:35", "11:35", "13:10", "15:10", "16:45", "18:20", "19:55", "21:25", "22:55"].index(lesson_start_time) + 1
 
 
 def get_event_color(lesson_type: str):
@@ -73,7 +56,7 @@ def get_event_color(lesson_type: str):
     if event_color is None:
         print(f"Ошибка — Тип предмета '{lesson_type}' не найден в словаре")
 
-    return event_colors.get(lesson_type)
+    return event_color
 
 
 def format_event_as_string(event: Event):
