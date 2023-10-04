@@ -111,10 +111,9 @@ def get_schedule_events(schedule_semester_id: int, schedule_type: int, student_g
         lesson_comment = lesson_columns[7].text
 
         for week in lesson_weeks:
-            first_lesson.add(week + day_of_week)
-
             lesson_end_date = get_date_from_schedule(first_day_of_first_september_week, int(week), day_of_week, lesson_end_time)
             if current_date > lesson_end_date:  # Не добавляем уже прошедшие занятия.
+                first_lesson.add(week + day_of_week)
                 continue
 
             lesson_start_date = get_date_from_schedule(first_day_of_first_september_week, int(week), day_of_week, lesson_start_time)
@@ -130,6 +129,8 @@ def get_schedule_events(schedule_semester_id: int, schedule_type: int, student_g
                     start=lesson_start_date,
                     end=lesson_end_date
             )
+
+            first_lesson.add(week + day_of_week)
 
     return schedule_events
 
