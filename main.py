@@ -1,3 +1,5 @@
+from typing import Optional
+
 import requests
 import configparser
 import pytz
@@ -66,7 +68,7 @@ def format_event_as_string(event: Event):
 # Main Code
 
 def get_schedule_events(schedule_semester_id: int, schedule_type: int, student_group_or_teacher_id: int,
-                        minutes_before_popup_reminder_first_lesson=60, minutes_before_popup_reminder=10):
+                        minutes_before_popup_reminder_first_lesson: Optional[int], minutes_before_popup_reminder: Optional[int]):
     params = {
         "schedule_semestr_id": schedule_semester_id,
         "WhatShow": schedule_type,
@@ -142,8 +144,9 @@ def main():
         int(config["Settings"]["schedule_semester_id"]),
         int(config["Settings"]["schedule_type"]),
         student_group_or_teacher_id=int(config["Settings"]["student_group_or_teacher_id"]),
-        minutes_before_popup_reminder_first_lesson=int(config["Settings"]["minutes_before_popup_reminder_first_lesson"]),
-        minutes_before_popup_reminder=int(config["Settings"]["minutes_before_popup_reminder"])
+        minutes_before_popup_reminder_first_lesson=(
+            int(config["Settings"]["minutes_before_popup_reminder_first_lesson"]) if "minutes_before_popup_reminder_first_lesson" in config["Settings"] else None),
+        minutes_before_popup_reminder=(int(config["Settings"]["minutes_before_popup_reminder"]) if "minutes_before_popup_reminder" in config["Settings"] else None)
     )
 
     for gc_event in gc_events:
