@@ -22,6 +22,7 @@
 4. Перейдите в [Credentials](https://console.cloud.google.com/apis/credentials/oauthclient) и создайте учетные данные (OAuth client ID) для веб-приложения (Web application). В поле "Authorized redirect URIs" добавьте и укажите `http://localhost:8080/`. Скачайте файл JSON с учетными данными выбрав "DOWNLOAD JSON". Переименуйте его в `client_secret.json` и поместите его в корневую папку проекта.
 
 5. Настройте файл `settings.ini` следующим образом:
+   - `task_scheduler_delay`: Время ожидания в секундах перед следующим запуском проверки расписания (0 — отключить).
    - `default_calendar`: Ваш адрес электронной почты / ID вторичного календаря.
    - `schedule_semester_id`: ID текущего семестра.
    - `schedule_type`: 1 для расписания группы, 2 для расписания преподавателя.
@@ -35,4 +36,4 @@
 
 7. Запустите скрипт `main.py`. На странице авторизации Google подтвердите доступ к вашему календарю.
 
-8. Для автоматизации обновления расписания можете использовать pm2. Пример: `pm2 start main.py --name UGCS --interpreter python3 --no-autorestart --cron-restart="*/30 * * * *"`.
+8. Для работы скрипта в фоновом режиме можете использовать pm2. Пример: `pm2 start main.py --name UGCS --interpreter python3`.
