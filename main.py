@@ -191,24 +191,21 @@ def sync_calendar_with_schedule(gc: GoogleCalendar, settings: Settings):
 
     for gc_event in gc_events:
         if get_event_hash(gc_event) not in schedule_events:
-            gc.delete_event(gc_event, send_updates="all")
+            gc.delete_event(gc_event)
             print(f"Занятие удаленно — {format_event_as_string(gc_event)}")
             continue
 
         schedule_event = schedule_events[get_event_hash(gc_event)]
 
-        is_event_updated = (gc_event.summary != schedule_event.summary or gc_event.description != schedule_event.description or gc_event.location != schedule_event.location or
-                            gc_event.reminders != schedule_event.reminders)
-
-        if is_event_updated:
+        if gc_event.reminders != schedule_event.reminders:
             schedule_event.event_id = gc_event.event_id
-            gc.update_event(schedule_event, send_updates="all")
+            gc.update_event(schedule_event)
             print(f"Занятие обновлено — {format_event_as_string(schedule_event)}")
 
         schedule_events.pop(get_event_hash(gc_event))
 
     for schedule_event in schedule_events.values():
-        gc.add_event(schedule_event, send_updates="all")
+        gc.add_event(schedule_event)
         print(f"Занятие добавлено — {format_event_as_string(schedule_event)}")
 
 
