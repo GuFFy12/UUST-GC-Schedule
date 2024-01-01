@@ -1,7 +1,5 @@
 from configparser import ConfigParser
 from datetime import datetime, timedelta
-from time import time, sleep
-from typing import Callable, Tuple, Optional, Union
 
 import requests
 from bs4 import BeautifulSoup
@@ -23,32 +21,19 @@ class Settings:
             raise ValueError('No config file found!')
 
         settings = config_parser["Settings"]
-        self.task_scheduler_delay = int(settings.get("task_scheduler_delay", "0"))
         self.default_calendar = settings.get("default_calendar", "")
-        self.schedule_semester_id = int(settings.get("schedule_semester_id", "0"))
-        self.schedule_type = int(settings.get("schedule_type", "0"))
-        self.student_group_or_teacher_id = int(settings.get("student_group_or_teacher_id", "0"))
+        self.schedule_year = settings.get("schedule_year", "0")
+        self.schedule_type = settings.get("schedule_type", "0")
+        self.student_group_or_teacher_id = settings.get("student_group_or_teacher_id", "0")
         self.minutes_before_reminder_first_lesson = int(settings.get("minutes_before_reminder_first_lesson", "0"))
         self.minutes_before_reminder = int(settings.get("minutes_before_reminder", "0"))
 
 
-def every(delay: Union[int, float], task: Callable, args: Optional[Tuple]):
-    next_time = time() + delay
-    while True:
-        sleep(max(0.0, next_time - time()))
-        try:
-            task(*args)
-        except Exception as error:
-            print(f"{type(error).__name__} — {str(error)}")
+def get_date_of_first_september_week(date: datetime):
+    first_september = timezone("Asia/Yekaterinburg").localize(datetime(date.year, 9, 1))
 
-        next_time += (time() - next_time) // delay * delay + delay
-
-
-def get_date_of_first_september_week(current_date: datetime):
-    first_september = timezone("Asia/Yekaterinburg").localize(datetime(current_date.year, 9, 1))
-
-    if current_date < first_september:
-        first_september = datetime(current_date.year - 1, 9, 1)
+    if date < first_september:
+        first_september = datetime(date.year - 1, 9, 1)
 
     day_of_week = first_september.weekday()
 
@@ -95,7 +80,7 @@ def get_event_color(lesson_type: str):
 
 
 def format_event_as_string(event: Event):
-    return f"{datetime.strftime(event.start, '%d.%m.%Y %H:%M')}, {event.summary}, {event.location}, {event.description}"
+    return f"{datetime.strftime(event.start, '%d.%m.%Y %H:%M')}, {event.summary}, {event.location}, {event.description}".replace("\n", " ")
 
 
 def get_event_hash(event: Event):
@@ -104,7 +89,7 @@ def get_event_hash(event: Event):
 
 # Main Code
 
-def get_schedule_events(date_of_first_september_week: datetime, schedule_semester_id: int, schedule_type: int, student_group_or_teacher_id: int,
+def get_schedule_events(date_of_first_september_week: datetime, schedule_semester_id: str, schedule_type: str, student_group_or_teacher_id: str,
                         minutes_before_reminder_first_lesson: int, minutes_before_reminder: int):
     params = {
         "schedule_semestr_id": schedule_semester_id,
@@ -112,12 +97,12 @@ def get_schedule_events(date_of_first_september_week: datetime, schedule_semeste
         "weeks": 0,
     }
 
-    if schedule_type == 1:
+    if schedule_type == "1":
         params["student_group_id"] = student_group_or_teacher_id
-    elif schedule_type == 2:
+    elif schedule_type == "2":
         params["teacher"] = student_group_or_teacher_id
 
-    response = requests.get("https://isu.ugatu.su/api/new_schedule_api/", params)
+    response = requests.get("https://isu.uust.ru/api/new_schedule_api/", params)
     soup = BeautifulSoup(response.text, "html.parser")
     lesson_rows = soup.find("tbody").findAll("tr")
 
@@ -174,21 +159,25 @@ def get_schedule_events(date_of_first_september_week: datetime, schedule_semeste
     return schedule_events
 
 
-def sync_calendar_with_schedule(gc: GoogleCalendar, settings: Settings):
+def main():
+    settings = Settings()
+    gc = GoogleCalendar(settings.default_calendar, credentials_path="client_secret.json")
+
     current_date = datetime.now(timezone("Asia/Yekaterinburg"))
     date_of_first_september_week = get_date_of_first_september_week(current_date)
 
+    schedule_events = {}
+    for schedule_semester_number in ["1", "2"]:
+        schedule_events.update(get_schedule_events(
+            date_of_first_september_week,
+            settings.schedule_year + schedule_semester_number,
+            settings.schedule_type,
+            settings.student_group_or_teacher_id,
+            settings.minutes_before_reminder_first_lesson,
+            settings.minutes_before_reminder
+        ))
+
     gc_events = list(gc.get_events(time_min=date_of_first_september_week, timezone="Asia/Yekaterinburg"))
-
-    schedule_events = get_schedule_events(
-        date_of_first_september_week,
-        settings.schedule_semester_id,
-        settings.schedule_type,
-        settings.student_group_or_teacher_id,
-        settings.minutes_before_reminder_first_lesson,
-        settings.minutes_before_reminder
-    )
-
     for gc_event in gc_events:
         if get_event_hash(gc_event) not in schedule_events:
             gc.delete_event(gc_event)
@@ -207,19 +196,6 @@ def sync_calendar_with_schedule(gc: GoogleCalendar, settings: Settings):
     for schedule_event in schedule_events.values():
         gc.add_event(schedule_event)
         print(f"Занятие добавлено — {format_event_as_string(schedule_event)}")
-
-
-def main():
-    settings = Settings()
-
-    gc = GoogleCalendar(settings.default_calendar, credentials_path="client_secret.json")
-
-    sync_calendar_with_schedule(gc, settings)
-
-    if settings.task_scheduler_delay == 0:
-        return
-
-    every(settings.task_scheduler_delay, sync_calendar_with_schedule, (gc, settings))
 
 
 if __name__ == "__main__":
