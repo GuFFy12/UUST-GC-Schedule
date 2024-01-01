@@ -29,15 +29,10 @@ class Settings:
         self.minutes_before_reminder = int(settings.get("minutes_before_reminder", "0"))
 
 
-def get_date_of_first_september_week(date: datetime):
-    first_september = timezone("Asia/Yekaterinburg").localize(datetime(date.year, 9, 1))
+def get_date_of_first_september_week(year: int):
+    first_september = timezone("Asia/Yekaterinburg").localize(datetime(year, 9, 1))
 
-    if date < first_september:
-        first_september = datetime(date.year - 1, 9, 1)
-
-    day_of_week = first_september.weekday()
-
-    return first_september - timedelta(days=day_of_week)
+    return first_september - timedelta(days=first_september.weekday())
 
 
 def get_date_from_schedule(date_of_first_september_week: datetime, week: int, day_of_week: str, lesson_time: str):
@@ -163,8 +158,7 @@ def main():
     settings = Settings()
     gc = GoogleCalendar(settings.default_calendar, credentials_path="client_secret.json")
 
-    current_date = datetime.now(timezone("Asia/Yekaterinburg"))
-    date_of_first_september_week = get_date_of_first_september_week(current_date)
+    date_of_first_september_week = get_date_of_first_september_week(int("20" + settings.schedule_year))
 
     schedule_events = {}
     for schedule_semester_number in ["1", "2"]:
