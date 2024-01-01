@@ -1,5 +1,6 @@
 from configparser import ConfigParser
 from datetime import datetime, timedelta
+from typing import Dict
 
 import requests
 from bs4 import BeautifulSoup
@@ -84,8 +85,23 @@ def get_event_hash(event: Event):
 
 # Main Code
 
+def get_teachers_full_names():
+    get_department_list_response = requests.get("https://isu.uust.ru/api/schedule/?login=arpakit&pass=vPDPhQAE&ask=get_kafedra_list")
+
+    teachers_full_names = {}
+    for department in get_department_list_response.json()["data"].values():
+        for teacher in department["teachers"]:
+            if teacher["fio"] in teachers_full_names and teachers_full_names[teacher["fio"]] != teacher["fullname"]:
+                teachers_full_names[teacher["fio"]] = teacher["fio"]
+                continue
+
+            teachers_full_names[teacher["fio"]] = teacher["fullname"]
+
+    return teachers_full_names
+
+
 def get_schedule_events(date_of_first_september_week: datetime, schedule_semester_id: str, schedule_type: str, student_group_or_teacher_id: str,
-                        minutes_before_reminder_first_lesson: int, minutes_before_reminder: int):
+                        minutes_before_reminder_first_lesson: int, minutes_before_reminder: int, teachers_full_names: Dict[str, str]):
     params = {
         "schedule_semestr_id": schedule_semester_id,
         "WhatShow": schedule_type,
@@ -97,8 +113,8 @@ def get_schedule_events(date_of_first_september_week: datetime, schedule_semeste
     elif schedule_type == "2":
         params["teacher"] = student_group_or_teacher_id
 
-    response = requests.get("https://isu.uust.ru/api/new_schedule_api/", params)
-    soup = BeautifulSoup(response.text, "html.parser")
+    new_schedule_api_response = requests.get("https://isu.uust.ru/api/new_schedule_api/", params)
+    soup = BeautifulSoup(new_schedule_api_response.text, "html.parser")
     lesson_rows = soup.find("tbody").findAll("tr")
 
     schedule_events = {}
@@ -118,7 +134,7 @@ def get_schedule_events(date_of_first_september_week: datetime, schedule_semeste
         lesson_weeks = lesson_columns[2].text.split()
         lesson_name = lesson_columns[3].text
         lesson_type = lesson_columns[4].text
-        lesson_teacher_or_student_group = lesson_columns[5].text
+        lesson_teacher_or_student_group = teachers_full_names.get(lesson_columns[5].text, lesson_columns[5].text)
         lesson_classroom = lesson_columns[6].text
         lesson_comment = lesson_columns[7].text
 
@@ -159,6 +175,7 @@ def main():
     gc = GoogleCalendar(settings.default_calendar, credentials_path="client_secret.json")
 
     date_of_first_september_week = get_date_of_first_september_week(int("20" + settings.schedule_year))
+    teachers_full_names = get_teachers_full_names()
 
     schedule_events = {}
     for schedule_semester_number in ["1", "2"]:
@@ -168,7 +185,8 @@ def main():
             settings.schedule_type,
             settings.student_group_or_teacher_id,
             settings.minutes_before_reminder_first_lesson,
-            settings.minutes_before_reminder
+            settings.minutes_before_reminder,
+            teachers_full_names
         ))
 
     gc_events = list(gc.get_events(time_min=date_of_first_september_week, timezone="Asia/Yekaterinburg"))
